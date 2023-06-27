@@ -54,18 +54,7 @@ print(reformatted_word_counts)
 ```
 
 Before moving forward with proper feature selection we will preventively remove two categories of words:
-1) the numerous ones with clearly no significant meaning (e.g. "the", "in", "of")
-2) the ones too rare (e.g. the bottom 60%)
-
-```{r}
-# List of words to exclude
-words_to_exclude <- c("the", "in", "to", "of", "a", "and", "for", "is", "on", "has", "have", "are")
-
-# Filter out rows containing the words to exclude
-filtered_word_counts <- reformatted_word_counts %>%
-  filter(!Text %in% words_to_exclude)
-```
-
+1) the ones too rare (e.g. the bottom 60%)
 
 ```{r}
 # Minimum count threshold
@@ -121,9 +110,6 @@ colnames(results) = columns
 
 # Add word column
 results$Text <- filtered_word_counts$Text
-
-results <- results[, col_order]
-results
 ```
 
 
@@ -166,15 +152,10 @@ for (y in col_ind) {
   rws <- as.vector(selected_rows$Text)
   wrds <- union(wrds,rws)
 }
-wrds
-```
-
-```{r}
 wrds <- wrds[order(-str_length(wrds))]
-wrds[wrds=="says"]
 ```
 
-Reformat original dataset
+Reformat original data set
 
 ```{r}
 dfout <- df
@@ -185,10 +166,6 @@ for (i in c(1:nrow(dfout))) {
 }
 ```
 
-```{r}
-df[1,2]
-dfout[1,2]
-```
 
 
 
