@@ -1,0 +1,178 @@
+---
+title: "Feature selection for Naive Bayes Classifier"
+author: "Barbiero Lorenzo"
+date: "`r Sys.Date()`"
+output: 
+  prettydoc::html_pretty:
+        theme: cayman
+        highlight: github
+        math: katex
+---
+
+EXERCISE 1  
+
+```{r}
+library(tidyverse)
+
+```
+
+1.1)
+Import data
+
+```{r}
+train <- read.csv('archive/train.csv', header=TRUE)
+```
+
+```{r}
+df <- data.frame(train)
+
+# Convert everything to lowercase, remove punctuation, and split into separate words
+df <- df |> mutate(Text = tolower(Text)) |>
+  mutate(Text = str_replace_all(Text, "[[:punct:]]", "")) |>
+  separate_rows(Text, sep = "\\s+")
+
+# Count the occurrences of each word for each label
+word_counts <- df |>
+  group_by(Labels, Text) |>
+  summarise(count = n()) |>
+  filter(!is.na(count)) |>
+  arrange(-count)
+
+# Print the word counts
+print(word_counts)
+```
+```{r}
+# Reformat the word_counts data frame
+reformatted_word_counts <- word_counts %>%
+  pivot_wider(names_from = Labels, values_from = count, values_fill = 0)%>%
+  mutate(Sum = rowSums(across(-Text))) |> arrange(-Sum)
+
+colnames(reformatted_word_counts) <- c("Text","Two","Three","One","Five","Zero","Four", "Total")
+
+# Print the reformatted word counts
+print(reformatted_word_counts)
+```
+
+Before moving forward with proper feature selection we will preventively remove two categories of words:
+1) the numerous ones with clearly no significant meaning (e.g. "the", "in", "of")
+2) the ones too rare (e.g. the bottom 60%)
+
+```{r}
+# List of words to exclude
+words_to_exclude <- c("the", "in", "to", "of", "a", "and", "for", "is", "on", "has", "have", "are")
+
+# Minimum count threshold
+min_count <- 10
+
+# Filter out rows containing the words to exclude
+filtered_word_counts <- reformatted_word_counts %>%
+  filter(!Text %in% words_to_exclude)
+
+# Filter out rows with counts below the threshold
+filtered_word_counts <- filtered_word_counts %>%
+  filter(Total > min_count) 
+
+# Print the final filtered word counts
+print(filtered_word_counts)
+```
+
+At this point proper feature selection can start, we'll implement both mutual information and chi squared
+
+Mutual function
+```{r}
+mutual_info <- function(N_11,N_01,N_10,N_00){
+  N <- N_00+N_01+N_10+N_00
+  N_1.=N_01+N_11
+  N_.1=N_10+N_11
+  N_0.=N_00+N_10
+  N_.0=N_01+N_00
+  
+  info <- (1/N)*(N_11*log2(N*N_11/(N_1.*N_.1)) + N_01*log2(N*N_01/(N_0.*N_.1))
+          + N_10*log2(N*N_10/(N_1.*N_.0)) + N_00*log2(N*N_00/(N_0.*N_.0)))
+  
+  return(info)
+}
+```
+
+Chi squared
+```{r}
+chi2 <- function(N_11,N_01,N_10,N_00){
+  chi <- ((N_11+N_10+N_01+N_00)*(N_11*N_00-N_10*N_01)**2)/((N_11+N_01)*(N_11+N_10)*(N_10+N_00)*(N_01*N_00))
+  
+ return(chi) 
+}
+```
+
+```{r}
+col_ind <- (names(filtered_word_counts))
+```
+
+```{r}
+# Dataframe for results
+drop <- c("Total")
+results <- filtered_word_counts[,!(names(filtered_word_counts) %in% drop)]
+
+#Iterate over everything
+drop <- c("Text","Total")
+col_ind <- c("Two","Three","One","Five","Zero","Four")
+row_ind <- c(1:length(filtered_word_counts))
+
+for (y in col_ind) {
+ dummydf <- filtered_word_counts[,c("Text",y,"Total")] 
+}
+
+txt <- dummydf[-1,1]
+
+```
+
+
+Iterate function
+
+```{r}
+# Create a Vector with Columns
+columns = c("Two","Three","One","Five","Zero","Four")
+col_order = c("Text","Two","Three","One","Five","Zero","Four")
+
+#Create a Empty DataFrame with 0 rows and n columns
+results = data.frame(matrix(nrow = nrow(filtered_word_counts), ncol = length(columns))) 
+
+# Assign column names
+colnames(results) = columns
+
+# Add word column
+results$Text <- filtered_word_counts[,"Text"]
+
+results <- results[, col_order]
+
+colnames(results) = col_order
+```
+
+
+```{r}
+col_ind <- c("Two","Three","One","Five","Zero","Four")
+row_ind <- c(1:nrow(filtered_word_counts))
+
+for (y in col_ind) {
+  dummydf <- filtered_word_counts[,c("Text",y,"Total")]
+  for (x in row_ind) {
+    N_11 <- dummydf[x,2]
+    N_01 <- sum(dummydf[-x,2])
+    N_10 <- dummydf[x,3] - dummydf[x,2]
+    N_00 <- sum(dummydf[-x,3]-dummydf[-x,2])
+    
+    results[x,y] <- mutual_info(N_11,N_01,N_10,N_00)
+  }
+}
+
+print(results)
+```
+
+```{r}
+results
+```
+
+
+
+
+
+
