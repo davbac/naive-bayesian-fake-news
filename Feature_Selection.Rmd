@@ -13,7 +13,6 @@ EXERCISE 1
 
 ```{r}
 library(tidyverse)
-
 ```
 
 1.1)
@@ -28,14 +27,15 @@ df <- data.frame(train)
 
 # Convert everything to lowercase, remove punctuation, and split into separate words
 df <- df |> mutate(Text = tolower(Text)) |>
-  mutate(Text = str_replace_all(Text, "[[:punct:]]", "")) |>
-  separate_rows(Text, sep = "\\s+")
+  mutate(Text = str_replace_all(Text, "[[:punct:]]", ""))
+  
 
 # Count the occurrences of each word for each label
 word_counts <- df |>
+  separate_rows(Text, sep = "\\s+") |>
   group_by(Labels, Text) |>
   summarise(count = n()) |>
-  filter(!is.na(count)) |>
+  #filter(!is.na(count)) |>
   arrange(-count)
 
 # Print the word counts
@@ -61,12 +61,15 @@ Before moving forward with proper feature selection we will preventively remove 
 # List of words to exclude
 words_to_exclude <- c("the", "in", "to", "of", "a", "and", "for", "is", "on", "has", "have", "are")
 
-# Minimum count threshold
-min_count <- 10
-
 # Filter out rows containing the words to exclude
 filtered_word_counts <- reformatted_word_counts %>%
   filter(!Text %in% words_to_exclude)
+```
+
+
+```{r}
+# Minimum count threshold
+min_count <- 5
 
 # Filter out rows with counts below the threshold
 filtered_word_counts <- filtered_word_counts %>%
@@ -103,34 +106,11 @@ chi2 <- function(N_11,N_01,N_10,N_00){
 }
 ```
 
-```{r}
-col_ind <- (names(filtered_word_counts))
-```
-
-```{r}
-# Dataframe for results
-drop <- c("Total")
-results <- filtered_word_counts[,!(names(filtered_word_counts) %in% drop)]
-
-#Iterate over everything
-drop <- c("Text","Total")
-col_ind <- c("Two","Three","One","Five","Zero","Four")
-row_ind <- c(1:length(filtered_word_counts))
-
-for (y in col_ind) {
- dummydf <- filtered_word_counts[,c("Text",y,"Total")] 
-}
-
-txt <- dummydf[-1,1]
-
-```
-
-
 Iterate function
 
 ```{r}
 # Create a Vector with Columns
-columns = c("Two","Three","One","Five","Zero","Four")
+columns = c("Text","Two","Three","One","Five","Zero","Four")
 col_order = c("Text","Two","Three","One","Five","Zero","Four")
 
 #Create a Empty DataFrame with 0 rows and n columns
@@ -140,11 +120,10 @@ results = data.frame(matrix(nrow = nrow(filtered_word_counts), ncol = length(col
 colnames(results) = columns
 
 # Add word column
-results$Text <- filtered_word_counts[,"Text"]
+results$Text <- filtered_word_counts$Text
 
 results <- results[, col_order]
-
-colnames(results) = col_order
+results
 ```
 
 
@@ -160,19 +139,56 @@ for (y in col_ind) {
     N_10 <- dummydf[x,3] - dummydf[x,2]
     N_00 <- sum(dummydf[-x,3]-dummydf[-x,2])
     
-    results[x,y] <- mutual_info(N_11,N_01,N_10,N_00)
+    results[x,y] <- chi2(N_11,N_01,N_10,N_00)
   }
 }
-
-print(results)
 ```
+
+In order to select the best features we'll look for the ones with the higher Chi^2
 
 ```{r}
 results
 ```
 
+```{r}
+col_ind <- c("Two","Three","One","Five","Zero","Four")
 
+wrds <- vector()
 
+for (y in col_ind) {
+  dummydf <- results[,c("Text",y)]
+  
+  # Select rows with results in the top A%
+  top_percentage <- 0.1
+
+  selected_rows <- dummydf %>%
+  slice_max(dummydf[[2]] ,prop = top_percentage)
+  rws <- as.vector(selected_rows$Text)
+  wrds <- union(wrds,rws)
+}
+wrds
+```
+
+```{r}
+wrds <- wrds[order(-str_length(wrds))]
+wrds[wrds=="says"]
+```
+
+Reformat original dataset
+
+```{r}
+dfout <- df
+
+for (i in c(1:nrow(dfout))) {
+  matched_words <- str_extract_all(paste(" ",dfout[i,2]," "), paste(wrds, collapse = " | "))[[1]]
+  dfout[i,2] <- gsub("\\s+", " ", paste(matched_words, collapse = " "))
+}
+```
+
+```{r}
+df[1,2]
+dfout[1,2]
+```
 
 
 
