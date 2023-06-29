@@ -14,12 +14,12 @@ args <- commandArgs(trailingOnly = TRUE)
 min_count <- as.integer(args[1])
 select_method <- as.integer(args[2])
 top_percentage <- as.numeric(args[3])
-neighbouring <- as.logical(args[4])
+#neighbouring <- as.logical(args[4])
 
 print(min_count)
 print(select_method)
 print(top_percentage)
-print(neighbouring)
+#print(neighbouring)
 
 flush.console()
 
@@ -61,7 +61,7 @@ reformatted_word_counts <- word_counts %>%
   pivot_wider(names_from = Labels, values_from = count, values_fill = 0)%>%
   mutate(Sum = rowSums(across(-Text))) |> arrange(-Sum)
 
-colnames(reformatted_word_counts) <- c("Text","Two","Three","One","Five","Zero","Four", "Total")
+colnames(reformatted_word_counts) <- c("Text","One","Zero", "Total")
 
 
 filtered_word_counts <- reformatted_word_counts %>%
@@ -98,8 +98,8 @@ chi2 <- function(N_11,N_01,N_10,N_00){
 
 
 # Create a Vector with Columns
-columns = c("Text","Two","Three","One","Five","Zero","Four")
-col_order = c("Text","Two","Three","One","Five","Zero","Four")
+columns = c("Text","One","Zero")
+col_order = c("Text","One","Zero")
 
 #Create a Empty DataFrame with 0 rows and n columns
 results = data.frame(matrix(nrow = nrow(filtered_word_counts), ncol = length(columns))) 
@@ -111,7 +111,7 @@ colnames(results) = columns
 results$Text <- filtered_word_counts$Text
 
 
-col_ind <- c("Two","Three","One","Five","Zero","Four")
+col_ind <- c("One","Zero")
 row_ind <- c(1:nrow(filtered_word_counts))
 
 for (y in col_ind) {
@@ -131,8 +131,6 @@ for (y in col_ind) {
   }
 }
 
-
-col_ind <- c("Two","Three","One","Five","Zero","Four")
 
 wrds <- vector()
 
@@ -178,8 +176,8 @@ val_data <- dfout[as.integer(test_perc * length(dfout$Labels)):length(dfout$Labe
 # print(length(data[,"Labels"]))
 # print(length(val_data[,"Labels"]))
 
-pc <- c(0,0,0,0,0,0)
-for(i in 0:5) {
+pc <- c(0,0)
+for(i in 0:1) {
   pc[i+1] <- length(data[data[, "Labels"]==i, "Labels"])
 }
 
@@ -192,21 +190,13 @@ ptc <- data.frame(
   token = tokens, 
   ct0 = 0,
   ct1 = 0,
-  ct2 = 0,
-  ct3 = 0,
-  ct4 = 0,
-  ct5 = 0,
   pt0 = 0,
-  pt1 = 0,
-  pt2 = 0,
-  pt3 = 0,
-  pt4 = 0,
-  pt5 = 0
+  pt1 = 0
 )
 
 
 
-for(i in 0:5) {
+for(i in 0:1) {
   class_text <- strsplit(paste(data[data[, "Labels"]==i, "Text"], sep=" ", collapse=" "), " ")[[1]]
   
   for(j in 1:length(tokens)) {
@@ -215,21 +205,12 @@ for(i in 0:5) {
   ptc[,paste("pt",i, sep="")] <- ptc[,paste("ct",i, sep="")] / (length(class_text) + length(tokens))
 }
 
-ptc <- ptc[,c("token","pt0", "pt1", "pt2", "pt3", "pt4", "pt5")]
+ptc <- ptc[,c("token","pt0", "pt1")]
 
 
 
 right_tr <- 0
 right_test <- 0
-
-score_matrix <- matrix(c(
-  1, 0.5, 0.5, 0.2, 0.1, 0,
-  0.5, 1, 0.2, 0, 0.1, 0,
-  0.5, 0.2, 1, 0.5, 0.1, 0.2,
-  0.2, 0, 0.5, 1, 0.1, 0.5,
-  0.1, 0.1, 0.1, 0.1, 1, 0.1,
-  0, 0, 0.2, 0.5, 0.1, 1
-), nrow=6, ncol=6)
 
 for(k in 1:length(data[,"Labels"])) {
   vec <- strsplit(data[k, "Text"], " ")[[1]]
@@ -238,7 +219,7 @@ for(k in 1:length(data[,"Labels"])) {
   
   
   for(h in vec) {
-    for(i in 0:5) {
+    for(i in 0:1) {
       inc <- log(ptc[ptc[,"token"]==h ,paste("pt",i, sep="")])
       if ( length(inc) == 1 && ! any(is.na(inc)) ) {
         probs[i+1] <- probs[i+1] + inc
@@ -246,13 +227,8 @@ for(k in 1:length(data[,"Labels"])) {
     }
   }
   
-  if( !neighbouring ) {
-    if( (0:5)[probs == max(probs)] == data[k, "Labels"]) {
-      right_tr <- right_tr + 1
-    }
-  }
-  else {
-    right_tr <- right_tr + score_matrix[(1:6)[probs==max(probs)], data[k, "Labels"]+1]
+  if( (0:1)[probs == max(probs)] == data[k, "Labels"]) {
+    right_tr <- right_tr + 1
   }
 }
 
@@ -265,7 +241,7 @@ for(k in 1:length(val_data[,"Labels"])) {
   
   
   for(h in vec) {
-    for(i in 0:5) {
+    for(i in 0:1) {
       inc <- log(ptc[ptc[,"token"]==h ,paste("pt",i, sep="")])
       if ( length(inc) == 1 && ! any(is.na(inc)) ) {
         probs[i+1] <- probs[i+1] + inc
@@ -273,13 +249,8 @@ for(k in 1:length(val_data[,"Labels"])) {
     }
   }
   
-  if( !neighbouring ) {
-    if( (0:5)[probs == max(probs)] == val_data[k, "Labels"]) {
-       right_test <- right_test + 1
-    }
-  }
-  else {
-    right_test <- right_test + score_matrix[(1:6)[probs==max(probs)], val_data[k, "Labels"]+1]
+  if( (0:1)[probs == max(probs)] == val_data[k, "Labels"]) {
+      right_test <- right_test + 1
   }
 }
 

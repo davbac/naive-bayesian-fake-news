@@ -677,3 +677,4 @@ infmet <- c(0,1)
 bench <- benchmark(minimum_counts = min_cts,percentage = perc,information_method = infmet)
 ```
 
+
