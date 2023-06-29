@@ -23,18 +23,18 @@ print(top_percentage)
 
 flush.console()
 
-orig_data <- read.csv('./train.csv', header=TRUE)
+orig_data <- read.csv('fake-news/train.csv', header=TRUE)
 
 
 test_perc <- 0.8
 
-orig_data <- orig_data[sample(1:length(orig_data$Labels)), ] #random shuffle
+orig_data <- orig_data[sample(1:length(orig_data$label)), ] #random shuffle
 orig_data <- data.frame(orig_data)
-#length(orig_data[,"Labels"])
+#length(orig_data[,"label"])
 
 
 # Convert everything to lowercase, remove punctuation, and split into separate words
-orig_data <- orig_data |> mutate(Text = tolower(Text)) |>
+orig_data <- orig_data |> mutate(Text = tolower(text)) |>
   mutate(Text = str_replace_all(Text, "[[:punct:]]", " ")) |>
   mutate(Text = str_replace_all(Text, fixed(" the "), " ")) |>
   mutate(Text = str_replace_all(Text, fixed(" a "), " ")) |>
@@ -42,23 +42,23 @@ orig_data <- orig_data |> mutate(Text = tolower(Text)) |>
   mutate(Text = str_replace_all(Text, fixed("   "), " ")) |>
   mutate(Text = str_replace_all(Text, fixed("  "), " "))
 
-val_data <- orig_data[as.integer(test_perc * length(orig_data$Labels)):length(orig_data$Labels),]
-data <- orig_data[1:as.integer(test_perc * length(orig_data$Labels)),]
+val_data <- orig_data[as.integer(test_perc * length(orig_data$label)):length(orig_data$label),]
+data <- orig_data[1:as.integer(test_perc * length(orig_data$label)),]
 
-# length(data[,"Labels"])
-# length(val_data[,"Labels"])
+# length(data[,"label"])
+# length(val_data[,"label"])
 
 
 # Count the occurrences of each word for each label
 word_counts <- data |>
   separate_rows(Text, sep = "\\s+") |>
-  group_by(Labels, Text) |>
+  group_by(label, Text) |>
   summarise(count = n()) |>
   arrange(-count)
 
 # Reformat the word_counts data frame
 reformatted_word_counts <- word_counts %>%
-  pivot_wider(names_from = Labels, values_from = count, values_fill = 0)%>%
+  pivot_wider(names_from = label, values_from = count, values_fill = 0)%>%
   mutate(Sum = rowSums(across(-Text))) |> arrange(-Sum)
 
 colnames(reformatted_word_counts) <- c("Text","One","Zero", "Total")
@@ -170,15 +170,15 @@ for (i in c(1:nrow(dfout))) {
 # print(head(dfout[,2]))
 # print(head(orig_data[,2]))
 
-data <- dfout[1:as.integer(test_perc * length(dfout$Labels)),]
-val_data <- dfout[as.integer(test_perc * length(dfout$Labels)):length(dfout$Labels),]
+data <- dfout[1:as.integer(test_perc * length(dfout$label)),]
+val_data <- dfout[as.integer(test_perc * length(dfout$label)):length(dfout$label),]
 
-# print(length(data[,"Labels"]))
-# print(length(val_data[,"Labels"]))
+# print(length(data[,"label"]))
+# print(length(val_data[,"label"]))
 
 pc <- c(0,0)
 for(i in 0:1) {
-  pc[i+1] <- length(data[data[, "Labels"]==i, "Labels"])
+  pc[i+1] <- length(data[data[, "label"]==i, "label"])
 }
 
 full_text <- paste(data$Text, sep=" ", collapse=" ")
@@ -197,7 +197,7 @@ ptc <- data.frame(
 
 
 for(i in 0:1) {
-  class_text <- strsplit(paste(data[data[, "Labels"]==i, "Text"], sep=" ", collapse=" "), " ")[[1]]
+  class_text <- strsplit(paste(data[data[, "label"]==i, "Text"], sep=" ", collapse=" "), " ")[[1]]
   
   for(j in 1:length(tokens)) {
     ptc[j,paste("ct",i, sep="")] <- sum(class_text==ptc[j, "token"]) + 1
@@ -212,7 +212,7 @@ ptc <- ptc[,c("token","pt0", "pt1")]
 right_tr <- 0
 right_test <- 0
 
-for(k in 1:length(data[,"Labels"])) {
+for(k in 1:length(data[,"label"])) {
   vec <- strsplit(data[k, "Text"], " ")[[1]]
   vec <- vec[!(vec=="")]
   probs <- log(pc)
@@ -227,14 +227,14 @@ for(k in 1:length(data[,"Labels"])) {
     }
   }
   
-  if( (0:1)[probs == max(probs)] == data[k, "Labels"]) {
+  if( (0:1)[probs == max(probs)] == data[k, "label"]) {
     right_tr <- right_tr + 1
   }
 }
 
-acc_train <- 100*right_tr/length(data[,"Labels"])
+acc_train <- 100*right_tr/length(data[,"label"])
 
-for(k in 1:length(val_data[,"Labels"])) {
+for(k in 1:length(val_data[,"label"])) {
   vec <- strsplit(val_data[k, "Text"], " ")[[1]]
   vec <- vec[!(vec=="")]
   probs <- log(pc)
@@ -249,12 +249,12 @@ for(k in 1:length(val_data[,"Labels"])) {
     }
   }
   
-  if( (0:1)[probs == max(probs)] == val_data[k, "Labels"]) {
+  if( (0:1)[probs == max(probs)] == val_data[k, "label"]) {
       right_test <- right_test + 1
   }
 }
 
-acc_test <- 100*right_test/length(val_data[,"Labels"])
+acc_test <- 100*right_test/length(val_data[,"label"])
 
 print(acc_train)
 
